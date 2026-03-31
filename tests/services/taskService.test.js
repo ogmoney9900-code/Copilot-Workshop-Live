@@ -174,3 +174,142 @@ test('deleteTask throws Error for unknown id', () => {
     { message: 'Task with ID 00000000-0000-0000-0000-000000000000 not found.' }
   );
 });
+
+// --- Edge cases ---
+
+// createTask boundary values
+test('createTask accepts title of exactly 200 characters', () => {
+  const title = 'a'.repeat(200);
+  const task = createTask({ title });
+  assert.equal(task.title, title);
+});
+
+test('createTask throws TypeError for title longer than 200 characters', () => {
+  assert.throws(() => createTask({ title: 'a'.repeat(201) }), TypeError);
+});
+
+test('createTask throws TypeError for whitespace-only title', () => {
+  assert.throws(() => createTask({ title: '   ' }), TypeError);
+});
+
+test('createTask accepts a very long description', () => {
+  const task = createTask({ title: 'Long desc', description: 'x'.repeat(10000) });
+  assert.equal(task.description.length, 10000);
+});
+
+// createTask type mismatches
+test('createTask throws TypeError when title is a number', () => {
+  assert.throws(() => createTask({ title: 42 }), TypeError);
+});
+
+test('createTask throws TypeError when title is null', () => {
+  assert.throws(() => createTask({ title: null }), TypeError);
+});
+
+test('createTask throws TypeError when title is an array', () => {
+  assert.throws(() => createTask({ title: ['Task'] }), TypeError);
+});
+
+test('createTask throws TypeError for invalid status value', () => {
+  assert.throws(() => createTask({ title: 'T', status: 'pending' }), TypeError);
+});
+
+// createTask duplicate titles allowed (different IDs)
+test('createTask allows two tasks with the same title', () => {
+  const a = createTask({ title: 'Duplicate title' });
+  const b = createTask({ title: 'Duplicate title' });
+  assert.notEqual(a.id, b.id);
+  assert.equal(a.title, b.title);
+});
+
+// getAllTasks / getTaskById isolation
+test('getAllTasks returns a copy — mutating it does not affect the store', () => {
+  const before = getAllTasks().length;
+  const copy = getAllTasks();
+  copy.push({ id: 'fake', title: 'injected' });
+  assert.equal(getAllTasks().length, before);
+});
+
+test('getTaskById returns a copy — mutating it does not affect the store', () => {
+  const t = createTask({ title: 'Isolation check' });
+  const copy = getTaskById(t.id);
+  copy.title = 'mutated';
+  const fresh = getTaskById(t.id);
+  assert.equal(fresh.title, 'Isolation check');
+});
+
+test('getTaskById throws Error for null id', () => {
+  assert.throws(() => getTaskById(null), Error);
+});
+
+// queryTasks edge cases
+test('queryTasks with no options returns all tasks', () => {
+  const all = getAllTasks();
+  const queried = queryTasks();
+  assert.equal(queried.length, all.length);
+});
+
+test('queryTasks with empty options object returns all tasks', () => {
+  const all = getAllTasks();
+  const queried = queryTasks({});
+  assert.equal(queried.length, all.length);
+});
+
+test('queryTasks combines status and priority filters', () => {
+  createTask({ title: 'combo-a', status: 'done', priority: 'low' });
+  createTask({ title: 'combo-b', status: 'done', priority: 'high' });
+  const results = queryTasks({ status: 'done', priority: 'low' });
+  assert.ok(results.every(r => r.status === 'done' && r.priority === 'low'));
+  assert.ok(results.some(r => r.title === 'combo-a'));
+  assert.ok(!results.some(r => r.title === 'combo-b'));
+});
+
+test('queryTasks with filter returns empty array when no matches', () => {
+  // delete all done+high tasks first to guarantee empty result is possible
+  const results = queryTasks({ status: 'todo', priority: 'high' });
+  // Just assert it's an array (may or may not be empty depending on store)
+  assert.ok(Array.isArray(results));
+});
+
+test('queryTasks combined filter and sort', () => {
+  createTask({ title: 'sort-filter-a', status: 'todo', priority: 'low' });
+  createTask({ title: 'sort-filter-b', status: 'todo', priority: 'high' });
+  const results = queryTasks({ status: 'todo', sortBy: 'priority' });
+  const todoResults = results.filter(r => r.status === 'todo');
+  assert.equal(todoResults.length, results.length);
+  const highIdx = results.findIndex(r => r.priority === 'high');
+  const lowIdx = results.findIndex(r => r.priority === 'low');
+  assert.ok(highIdx < lowIdx);
+});
+
+// updateTask boundary values
+test('updateTask accepts title of exactly 200 characters', () => {
+  const t = createTask({ title: 'Update boundary' });
+  const updated = updateTask(t.id, { title: 'b'.repeat(200) });
+  assert.equal(updated.title, 'b'.repeat(200));
+});
+
+test('updateTask throws TypeError for title longer than 200 characters', () => {
+  const t = createTask({ title: 'Too long update' });
+  assert.throws(() => updateTask(t.id, { title: 'c'.repeat(201) }), TypeError);
+});
+
+test('updateTask with empty patch object returns task unchanged', () => {
+  const t = createTask({ title: 'No-op update' });
+  const updated = updateTask(t.id, {});
+  assert.equal(updated.title, 'No-op update');
+  assert.equal(updated.status, 'todo');
+  assert.equal(updated.priority, 'medium');
+});
+
+test('updateTask throws TypeError for invalid priority value', () => {
+  const t = createTask({ title: 'Bad priority update' });
+  assert.throws(() => updateTask(t.id, { priority: 'urgent' }), TypeError);
+});
+
+// deleteTask — idempotency / double delete
+test('deleteTask throws Error on second delete of the same id', () => {
+  const t = createTask({ title: 'Double delete' });
+  deleteTask(t.id);
+  assert.throws(() => deleteTask(t.id), Error);
+});

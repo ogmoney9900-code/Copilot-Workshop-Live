@@ -105,3 +105,116 @@ test('toJSON does not return a Task instance', () => {
   const task = new Task({ title: 'T' });
   assert.ok(!(task.toJSON() instanceof Task));
 });
+
+// --- Edge cases: boundary values ---
+
+test('accepts title of exactly 1 character', () => {
+  const task = new Task({ title: 'A' });
+  assert.equal(task.title, 'A');
+});
+
+test('accepts title of exactly 200 characters', () => {
+  const title = 'x'.repeat(200);
+  const task = new Task({ title });
+  assert.equal(task.title, title);
+});
+
+test('throws TypeError when title is exactly 201 characters after trim', () => {
+  assert.throws(() => new Task({ title: 'x'.repeat(201) }), TypeError);
+});
+
+test('title with surrounding spaces counts trimmed length against 200-char limit', () => {
+  // 200 x's with spaces around — trimmed length is exactly 200, should succeed
+  const task = new Task({ title: '  ' + 'x'.repeat(200) + '  ' });
+  assert.equal(task.title.length, 200);
+});
+
+test('accepts very long description', () => {
+  const description = 'a'.repeat(10000);
+  const task = new Task({ title: 'T', description });
+  assert.equal(task.description, description);
+});
+
+// --- Edge cases: type mismatches ---
+
+test('throws TypeError when title is null', () => {
+  assert.throws(() => new Task({ title: null }), TypeError);
+});
+
+test('throws TypeError when title is a number', () => {
+  assert.throws(() => new Task({ title: 123 }), TypeError);
+});
+
+test('throws TypeError when title is an array', () => {
+  assert.throws(() => new Task({ title: ['task'] }), TypeError);
+});
+
+test('throws TypeError when title is a boolean', () => {
+  assert.throws(() => new Task({ title: true }), TypeError);
+});
+
+test('throws TypeError when description is null', () => {
+  assert.throws(() => new Task({ title: 'T', description: null }), TypeError);
+});
+
+test('throws TypeError when description is an array', () => {
+  assert.throws(() => new Task({ title: 'T', description: ['desc'] }), TypeError);
+});
+
+test('throws TypeError when status is null', () => {
+  assert.throws(() => new Task({ title: 'T', status: null }), TypeError);
+});
+
+test('throws TypeError when status is a number', () => {
+  assert.throws(() => new Task({ title: 'T', status: 0 }), TypeError);
+});
+
+test('throws TypeError when priority is null', () => {
+  assert.throws(() => new Task({ title: 'T', priority: null }), TypeError);
+});
+
+test('throws TypeError when priority is false', () => {
+  assert.throws(() => new Task({ title: 'T', priority: false }), TypeError);
+});
+
+// --- Edge cases: missing optional fields ---
+
+test('throws TypeError when no argument is passed to constructor', () => {
+  assert.throws(() => new Task(), TypeError);
+});
+
+test('accepts task with only title and no other fields', () => {
+  const task = new Task({ title: 'Minimal' });
+  assert.equal(task.title, 'Minimal');
+  assert.equal(task.description, '');
+  assert.equal(task.status, 'todo');
+  assert.equal(task.priority, 'medium');
+});
+
+// --- Edge cases: toJSON integrity ---
+
+test('toJSON returns a shallow copy — mutating it does not affect the task', () => {
+  const task = new Task({ title: 'Original' });
+  const json = task.toJSON();
+  json.title = 'Mutated';
+  assert.equal(task.title, 'Original');
+});
+
+test('toJSON includes empty description when none was provided', () => {
+  const task = new Task({ title: 'T' });
+  const json = task.toJSON();
+  assert.equal(json.description, '');
+});
+
+// --- Edge cases: Unicode / special characters ---
+
+test('accepts title with Unicode characters', () => {
+  const task = new Task({ title: '买牛奶 🥛' });
+  assert.equal(task.title, '买牛奶 🥛');
+});
+
+test('accepts description with newlines and special characters', () => {
+  const description = 'Line 1\nLine 2\t<script>alert(1)</script>';
+  const task = new Task({ title: 'T', description });
+  assert.equal(task.description, description);
+});
