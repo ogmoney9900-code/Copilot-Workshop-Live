@@ -6,6 +6,7 @@ import {
   updateTask,
   deleteTask,
 } from './services/taskService.js';
+import { colorStatus, colorPriority } from './utils/colors.js';
 
 // --- Create tasks ---
 console.log('=== Creating tasks ===');
@@ -17,12 +18,12 @@ console.log('Created:', [t1, t2, t3, t4].map(t => t.title));
 
 // --- List all tasks ---
 console.log('\n=== All tasks ===');
-getAllTasks().forEach(t => console.log(`  [${t.priority}] ${t.title} (${t.status})`));
+getAllTasks().forEach(t => console.log(`  [${colorPriority(t.priority)}] ${t.title} (${colorStatus(t.status)})`));
 
 // --- Get task by ID ---
 console.log('\n=== Get task by ID ===');
 const found = getTaskById(t1.id);
-console.log('Found:', found.title, '| status:', found.status);
+console.log('Found:', found.title, '| status:', colorStatus(found.status));
 
 // --- Filter by status ---
 console.log('\n=== Filter: status=in-progress ===');
@@ -34,7 +35,7 @@ queryTasks({ priority: 'high' }).forEach(t => console.log(' ', t.title));
 
 // --- Sort by priority (high → low) ---
 console.log('\n=== Sort by priority (high first) ===');
-queryTasks({ sortBy: 'priority' }).forEach(t => console.log(`  [${t.priority}] ${t.title}`));
+queryTasks({ sortBy: 'priority' }).forEach(t => console.log(`  [${colorPriority(t.priority)}] ${t.title}`));
 
 // --- Sort by createdAt descending (newest first) ---
 console.log('\n=== Sort by createdAt descending ===');
@@ -43,7 +44,7 @@ queryTasks({ sortBy: 'createdAt', desc: true }).forEach(t => console.log(' ', t.
 // --- Update a task ---
 console.log('\n=== Update task ===');
 const updated = updateTask(t3.id, { status: 'in-progress', priority: 'high' });
-console.log('Updated:', updated.title, '→ status:', updated.status, '| priority:', updated.priority);
+console.log('Updated:', updated.title, '→ status:', colorStatus(updated.status), '| priority:', colorPriority(updated.priority));
 
 // --- Delete a task ---
 console.log('\n=== Delete task ===');
